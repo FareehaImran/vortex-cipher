@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VORTEX Cipher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --border:#1e1e2e;
+    --accent:#c8a96e; --accent2:#6eb5c8; --accent3:#c86e8a; --accent4:#6ec88a;
+    --text:#e8e8f0; --muted:#6666aa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(200,169,110,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,169,110,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:36px 20px;}
+  header{text-align:center;margin-bottom:40px;}
+  header h1{font-family:'Syne',sans-serif;font-size:clamp(2.2rem,6vw,4rem);font-weight:800;letter-spacing:-2px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,var(--accent3) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  header .sub{color:var(--muted);font-size:0.65rem;letter-spacing:5px;text-transform:uppercase;margin-top:6px;}
+  header .rule{color:var(--accent3);font-size:0.65rem;letter-spacing:2px;margin-top:8px;opacity:0.8;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:768px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;}
+  .card h2{font-family:'Syne',sans-serif;font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  label{display:block;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  input,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.82rem;padding:11px 13px;outline:none;transition:border-color 0.2s;resize:none;}
+  input:focus,textarea:focus{border-color:var(--accent);}
+  .field{margin-bottom:14px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  button{font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:1px;padding:10px 18px;border-radius:7px;border:none;cursor:pointer;transition:all 0.15s;text-transform:uppercase;}
+  .btn-p{background:var(--accent);color:#0a0a0f;font-weight:700;}
+  .btn-p:hover{background:#e0c080;transform:translateY(-1px);}
+  .btn-s{background:transparent;border:1px solid var(--border);color:var(--muted);}
+  .btn-s:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-d{background:transparent;border:1px solid var(--accent3);color:var(--accent3);}
+  .btn-d:hover{background:var(--accent3);color:#0a0a0f;}
+  .out-label{font-size:0.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .out-box{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:0.78rem;min-height:54px;word-break:break-all;color:var(--accent2);position:relative;}
+  .copy-btn{position:absolute;top:7px;right:7px;font-size:0.58rem;padding:3px 7px;background:var(--border);color:var(--muted);border-radius:4px;cursor:pointer;border:none;font-family:'Space Mono',monospace;transition:all 0.15s;}
+  .copy-btn:hover{color:var(--accent);}
+  .status{font-size:0.65rem;letter-spacing:1px;padding:7px 10px;border-radius:5px;margin-top:8px;display:none;}
+  .ok{background:rgba(110,200,138,0.1);border:1px solid rgba(110,200,138,0.3);color:var(--accent4);display:block;}
+  .err{background:rgba(200,110,138,0.1);border:1px solid rgba(200,110,138,0.3);color:var(--accent3);display:block;}
+  .layers-card{grid-column:1/-1;}
+  .tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap;}
+  .tab{font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;padding:7px 12px;border-radius:5px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all 0.15s;font-family:'Space Mono',monospace;}
+  .tab.active{background:var(--accent);color:#0a0a0f;border-color:var(--accent);font-weight:700;}
+  .tc{display:none;} .tc.active{display:block;}
+  .ring-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .rl{font-size:0.58rem;letter-spacing:1px;color:var(--muted);text-transform:uppercase;min-width:48px;}
+  .slot{width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;border:1px solid;position:relative;}
+  .sl{background:rgba(200,169,110,0.12);border-color:var(--accent);color:var(--accent);}
+  .sp{background:rgba(102,102,170,0.08);border-color:var(--border);color:var(--muted);}
+  .ss::after{content:'●';position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:6px;color:var(--accent3);}
+  .dir-b{font-size:0.58rem;padding:2px 7px;border-radius:3px;border:1px solid var(--border);color:var(--muted);margin-left:3px;}
+  .step{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:7px;background:var(--bg);border:1px solid var(--border);margin-bottom:8px;}
+  .step strong{font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:3px;}
+  .step span{font-size:0.78rem;word-break:break-all;}
+  .step .desc{font-size:0.6rem;color:var(--muted);margin-top:3px;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:9px;}
+  .pair-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin:10px 0;}
+  .pc{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px;text-align:center;font-size:0.72rem;}
+  .pc .pair{color:var(--accent);font-weight:700;}
+  .pc .arrow{color:var(--muted);font-size:0.6rem;}
+  .pc .code{color:var(--accent2);}
+  canvas{display:block;margin:0 auto;max-width:100%;}
+  .read-path{stroke-dasharray:5 4;animation:dash 1.5s linear infinite;}
+  .dec-header{font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  @keyframes dash{to{stroke-dashoffset:-18;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>VORTEX CIPHER</h1>
+    <p class="sub">5-Layer Geometric Encryption System</p>
+    <p class="rule">Written CW → Read CCW &nbsp;|&nbsp; Written CCW → Read CW &nbsp;|&nbsp; Spiral Inward</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Encrypt</h2>
+      <div class="field"><label>Plaintext</label><textarea id="pt" rows="4" placeholder="Enter your message...">HELLOWORLD</textarea></div>
+      <div class="field"><label>Keyword</label><input id="kw" value="CAT" placeholder="Secret keyword..."></div>
+      <div class="btn-row">
+        <button class="btn-p" onclick="runEncrypt()">Encrypt →</button>
+        <button class="btn-s" onclick="clearAll()">Clear</button>
+      </div>
+      <div id="eStatus" class="status"></div>
+      <div style="margin-top:16px">
+        <div class="out-label">Ciphertext</div>
+        <div class="out-box" id="ctBox"><button class="copy-btn" onclick="cp('ctBox')">copy</button><span id="ctText">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Decrypt</h2>
+      <div class="field"><label>Ciphertext</label><textarea id="ctIn" rows="4" placeholder="Paste ciphertext here..."></textarea></div>
+      <div class="field"><label>Keyword</label><input id="dkw" value="CAT" placeholder="Same keyword..."></div>
+      <div class="btn-row">
+        <button class="btn-d" onclick="runDecrypt()">← Decrypt</button>
+        <button class="btn-s" onclick="useCt()">Use ↑ Ciphertext</button>
+      </div>
+      <div id="dStatus" class="status"></div>
+      <div style="margin-top:16px">
+        <div class="out-label">Plaintext</div>
+        <div class="out-box" id="ptBox"><button class="copy-btn" onclick="cp('ptBox')">copy</button><span id="ptText">—</span></div>
+      </div>
+    </div>
+
+    <div class="card layers-card" id="layersCard" style="display:none">
+      <h2>Encryption Layers</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('rings',this)">① Rings</button>
+        <button class="tab" onclick="showTab('spiral',this)">② Spiral</button>
+        <button class="tab" onclick="showTab('keysub',this)">③ Key Sub</button>
+        <button class="tab" onclick="showTab('pairs',this)">④ Pairs</button>
+        <button class="tab" onclick="showTab('col',this)">⑤ Columnar</button>
+        <button class="tab" onclick="showTab('vis',this)">Visual</button>
+        <button class="tab" id="decTab1" onclick="showTab('dec1',this)" style="border-color:var(--accent3);color:var(--accent3);display:none">⑤ Rev Columnar</button>
+        <button class="tab" id="decTab2" onclick="showTab('dec2',this)" style="border-color:var(--accent3);color:var(--accent3);display:none">④ Rev Pairs</button>
+        <button class="tab" id="decTab3" onclick="showTab('dec3',this)" style="border-color:var(--accent3);color:var(--accent3);display:none">③ Rev Key Sub</button>
+        <button class="tab" id="decTab4" onclick="showTab('dec4',this)" style="border-color:var(--accent3);color:var(--accent3);display:none">② Rev Spiral</button>
+        <button class="tab" id="decTab5" onclick="showTab('dec5',this)" style="border-color:var(--accent3);color:var(--accent3);display:none">① Rev Rings</button>
+      </div>
+      <div id="tc-rings" class="tc active"><div id="ringsD"></div></div>
+      <div id="tc-spiral" class="tc"><div id="spiralD"></div></div>
+      <div id="tc-keysub" class="tc"><div id="keysubD"></div></div>
+      <div id="tc-pairs" class="tc"><div id="pairsD"></div></div>
+      <div id="tc-col" class="tc"><div id="colD"></div></div>
+      <div id="tc-vis" class="tc"><canvas id="vc" width="520" height="520"></canvas></div>
+      <div id="tc-dec1" class="tc"><div id="decD1"></div></div>
+      <div id="tc-dec2" class="tc"><div id="decD2"></div></div>
+      <div id="tc-dec3" class="tc"><div id="decD3"></div></div>
+      <div id="tc-dec4" class="tc"><div id="decD4"></div></div>
+      <div id="tc-dec5" class="tc"><div id="decD5"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════ VORTEX CIPHER ENGINE ═══════════
+
+let lastMeta = null;
+const RCOLS = ['#c8a96e','#6eb5c8','#c86e8a','#6ec88a','#c86eb5'];
+
+function clean(t){return t.toUpperCase().replace(/[^A-Z]/g,'');}
+function kvals(kw){return[...clean(kw)].map(c=>c.charCodeAt(0)-64);}
+function kvRing(kv,r){return kv[r%kv.length];}
+
+// Layer 1
+function ringSizes(len){
+  const s=[];let tot=0,n=1;
+  while(tot<len){const x=Math.pow(2,n);s.push(x);tot+=x;n++;}
+  return s;
+}
+function encryptRings(pt,kv){
+  const sizes=ringSizes(pt.length);
+  const rings=[];let li=0;
+  for(let r=0;r<sizes.length;r++){
+    const size=sizes[r],k=kvRing(kv,r);
+    const cw=k%2===1,fill=cw?'X':'Y';
+    const start=cw?k%size:(size-(k%size))%size;
+    const letters=[];
+    while(li<pt.length&&letters.length<size)letters.push({c:pt[li++],pad:false});
+    while(letters.length<size)letters.push({c:fill,pad:true});
+    const slots=new Array(size).fill(null);
+    for(let i=0;i<letters.length;i++){
+      const sl=cw?(start+i)%size:((start-i)%size+size)%size;
+      slots[sl]={...letters[i],isStart:sl===start};
+    }
+    rings.push({slots,size,kv:k,cw,fill,start});
+  }
+  return{rings,sizes};
+}
+
+// Layer 2: Spiral inward, OPPOSITE direction
+function spiralRead(rings){
+  const out=[];
+  for(let r=rings.length-1;r>=0;r--){
+    const {slots,size,cw}=rings[r];
+    // written CW → read CCW: index 0, size-1, size-2...
+    // written CCW → read CW: index 0, 1, 2...
+    for(let i=0;i<size;i++){
+      const idx=cw?(size-i)%size:i;
+      out.push(slots[idx].c);
+    }
+  }
+  return out.join('');
+}
+function reverseSpiralDist(spiralText,rings){
+  // spiralRead goes outermost first (rings.length-1 down to 0)
+  // so we slice in same order: outermost ring gets first chunk
+  const result=new Array(rings.length);
+  let idx=0;
+  for(let r=rings.length-1;r>=0;r--){
+    const {size,cw}=rings[r];
+    const chunk=spiralText.slice(idx,idx+size).split('');
+    idx+=size;
+    const slots=new Array(size).fill('?');
+    // reverse the read: written CW was read CCW (0,size-1,size-2..)
+    //                   written CCW was read CW (0,1,2..)
+    for(let i=0;i<size;i++){
+      const readIdx=cw?(size-i)%size:i;
+      slots[readIdx]=chunk[i];
+    }
+    result[r]=slots;
+  }
+  return result;
+}
+
+// Layer 3
+function keySub(t,kv){return[...t].map((c,i)=>String.fromCharCode(((c.charCodeAt(0)-65+kv[i%kv.length])%26)+65)).join('');}
+function keySubDec(t,kv){return[...t].map((c,i)=>String.fromCharCode(((c.charCodeAt(0)-65-kv[i%kv.length]+260)%26)+65)).join('');}
+
+// Layer 4 — Pair Formula: code = (26 × pos1) + pos2, A=0..Z=25
+const PAD_CODE=676;
+function pairEncode(pair){const a=pair.charCodeAt(0)-65,b=pair.charCodeAt(1)-65;return 26*a+b;}
+function pairDecode(code){const a=Math.floor(code/26),b=code%26;return String.fromCharCode(a+65)+String.fromCharCode(b+65);}
+function pairsEncrypt(text){
+  if(text.length%2!==0)text+='X';
+  const pairs=[];for(let i=0;i<text.length;i+=2)pairs.push(text.slice(i,i+2));
+  return{codes:pairs.map(p=>pairEncode(p)),pairs};
+}
+function pairsDecrypt(codes){return codes.filter(c=>c!==PAD_CODE).map(c=>pairDecode(c)).join('');}
+
+// Layer 5
+function colEnc(codes,kw){
+  const cols=kw.length,pad=[...codes];
+  while(pad.length%cols!==0)pad.push(PAD_CODE);
+  const rc=pad.length/cols;
+  const rows=[];for(let i=0;i<pad.length;i+=cols)rows.push(pad.slice(i,i+cols));
+  const order=[...kw].map((c,i)=>[c,i]).sort((a,b)=>a[0]<b[0]?-1:1).map(x=>x[1]);
+  const res=[];for(const col of order)for(const row of rows)res.push(row[col]);
+  return{res,order,rc};
+}
+function colDec(codes,kw,rc){
+  const cols=kw.length;
+  const order=[...kw].map((c,i)=>[c,i]).sort((a,b)=>a[0]<b[0]?-1:1).map(x=>x[1]);
+  const cols_data={};let idx=0;
+  for(const col of order){cols_data[col]=codes.slice(idx,idx+rc);idx+=rc;}
+  const res=[];for(let r=0;r<rc;r++)for(let c=0;c<cols;c++)res.push(cols_data[c][r]);
+  return res;
+}
+function tokStr(t){return t.map(x=>String(x).padStart(3,'0')).join('-');}
+function strTok(s){return s.split('-').map(Number);}
+
+// ═══ ENCRYPT ═══
+function runEncrypt(){
+  const ptRaw=document.getElementById('pt').value;
+  const kwRaw=document.getElementById('kw').value;
+  if(!ptRaw.trim()||!kwRaw.trim()){showSt('eStatus','Enter plaintext and keyword.',false);return;}
+  const pt=clean(ptRaw),kw=clean(kwRaw),kv=kvals(kw);
+  const{rings,sizes}=encryptRings(pt,kv);
+  const afterSpiral=spiralRead(rings);
+  const afterKS=keySub(afterSpiral,kv);
+  const{codes,pairs:pairsList}=pairsEncrypt(afterKS);
+  const{res:finalCodes,order,rc}=colEnc(codes,kw);
+  const ct=tokStr(finalCodes);
+  document.getElementById('ctText').textContent=ct;
+  lastMeta={rc,sizes,origLen:pt.length,rings,afterSpiral,afterKS,codes,pairsList,finalCodes,kv,kw,pt};
+  showSt('eStatus',`✓ Encrypted "${pt}" with key "${kw}"`,true);
+  showLayers(lastMeta,order);
+}
+
+// ═══ DECRYPT ═══
+function runDecrypt(){
+  const ct=document.getElementById('ctIn').value.trim();
+  const kw=document.getElementById('dkw').value;
+  if(!ct||!kw){showSt('dStatus','Enter ciphertext and keyword.',false);return;}
+
+  try{
+    const kwC=clean(kw), kv=kvals(kwC);
+    const finalCodes=strTok(ct);
+    const cols=kwC.length;
+
+    // Derive rows_count from ciphertext length and keyword length
+    if(finalCodes.length % cols !== 0){
+      showSt('dStatus','✗ Ciphertext length does not match keyword length. Check keyword.',false);
+      return;
+    }
+    const rc = finalCodes.length / cols;
+
+    // Reverse Layer 5: Columnar
+    const codes = colDec(finalCodes, kwC, rc);
+    const cleanCodes = codes.filter(c => c !== PAD_CODE);
+
+    // Reverse Layer 4: Pair formula decode
+    const afterKS = pairsDecrypt(cleanCodes);
+
+    // Reverse Layer 3: Key sub
+    const afterSpiral = keySubDec(afterKS, kv);
+
+    // Derive ring sizes from spiral length
+    const rings = buildRingsFromSpiral(afterSpiral, kv);
+
+    // Reverse Layer 2: Rebuild ring slots
+    const ringData = reverseSpiralDist(afterSpiral, rings);
+
+    // Reverse Layer 1: Extract letters
+    const out=[];
+    for(let r=0;r<rings.length;r++){
+      const{start,cw,fill,size}=rings[r];
+      for(let i=0;i<size;i++){
+        const slot=cw?(start+i)%size:((start-i)%size+size)%size;
+        const l=ringData[r][slot];
+        if(l!==fill&&l!=='?')out.push(l);
+      }
+    }
+
+    // Determine original length: total non-pad letters
+    // Remove trailing fill chars (X from CW rings, Y from CCW rings)
+    const plaintext = out.join('').replace(/[XY]+$/, '');
+    document.getElementById('ptText').textContent = plaintext;
+    showSt('dStatus','✓ Decrypted successfully',true);
+
+    // Always show layers card before showing decrypt layers
+    document.getElementById('layersCard').style.display='block';
+
+    showDecryptLayers({
+      kw:kwC, kv, finalCodes, cleanCodes,
+      afterKS, afterSpiral, ringData, rings,
+      plaintext, origLen: plaintext.length
+    });
+
+  } catch(e){
+    showSt('dStatus','✗ Decryption failed. Check ciphertext and keyword.', false);
+    console.error(e);
+  }
+}
+
+// Build rings structure purely from spiral length + key (no encryption metadata needed)
+function buildRingsFromSpiral(spiralText, kv){
+  // spiralText.length = exact total ring capacity from encryption
+  // Find ring sizes that sum exactly to spiralText.length
+  const sz=[];
+  let tot=0, n=1;
+  while(tot < spiralText.length){
+    const s=Math.pow(2,n);
+    sz.push(s); tot+=s; n++;
+  }
+  // Build ring metadata from key only
+  const rings=[];
+  for(let r=0; r<sz.length; r++){
+    const size=sz[r], k=kvRing(kv,r);
+    const cw=k%2===1, fill=cw?'X':'Y';
+    const start=cw?k%size:(size-(k%size))%size;
+    rings.push({size,kv:k,cw,fill,start,slots:[]});
+  }
+  return rings;
+}
+
+// ═══ LAYERS DISPLAY ═══
+function showLayers(m,colOrder){
+  document.getElementById('layersCard').style.display='block';
+
+  // Rings
+  let h='';
+  m.rings.forEach((ring,r)=>{
+    const col=RCOLS[r%RCOLS.length];
+    const readDir=ring.cw?'Read CCW ↺':'Read CW ↻';
+    const writeDir=ring.cw?'Write CW ↻':'Write CCW ↺';
+    h+=`<div class="ring-row"><div class="rl" style="color:${col}">Ring ${r+1}</div>`;
+    ring.slots.forEach((s,i)=>{
+      const cls=s.pad?'sp':'sl';
+      const sc=i===ring.start?'ss':'';
+      h+=`<div class="slot ${cls} ${sc}" style="${!s.pad?`border-color:${col};color:${col};background:${col}18`:''}">${s.c}</div>`;
+    });
+    h+=`<span class="dir-b">${writeDir}</span><span class="dir-b" style="color:${col}">${readDir}</span></div>`;
+  });
+  document.getElementById('ringsD').innerHTML=h;
+
+  // Spiral
+  let sh='';
+  m.rings.slice().reverse().forEach((ring,i)=>{
+    const rIdx=m.rings.length-1-i;
+    const col=RCOLS[rIdx%RCOLS.length];
+    const rd=ring.cw?'CCW ↺':'CW ↻';
+    const letters=[];
+    for(let j=0;j<ring.size;j++){
+      const idx=ring.cw?(ring.size-j)%ring.size:j;
+      letters.push(ring.slots[idx].c);
+    }
+    sh+=makeStep(`Ring ${rIdx+1} → read ${rd} from Part 1`,letters.join(''),`Start Part 1, go ${rd}`,col);
+  });
+  sh+=makeStep('Full spiral output',m.afterSpiral,'Outermost → innermost','#6ec88a');
+  document.getElementById('spiralD').innerHTML=sh;
+
+  // Key Sub
+  document.getElementById('keysubD').innerHTML=
+    makeStep('Before key sub',m.afterSpiral,'','#6eb5c8')+
+    makeStep('After key substitution',m.afterKS,`Each letter shifted by key values [${m.kv.join(', ')}]`,'#c8a96e');
+
+  // Pairs
+  let pg='<div class="pair-grid">';
+  if(m.pairsList){
+    m.pairsList.forEach((pair,i)=>{
+      const code=pairEncode(pair);
+      const a=pair.charCodeAt(0)-65,b=pair.charCodeAt(1)-65;
+      pg+=`<div class="pc"><div class="pair">${pair}</div><div class="arrow">(26×${a})+${b}</div><div class="code">${code}</div></div>`;
+    });
+  }
+  pg+='</div>';
+  document.getElementById('pairsD').innerHTML=
+    makeStep('After key sub',m.afterKS,'','#c8a96e')+
+    `<div style="margin:12px 0"><div class="out-label">Pair Formula: code = (26 × pos1) + pos2 &nbsp;[A=0..Z=25]</div>${pg}</div>`+
+    makeStep('Codes',m.codes.join(' - '),'Each pair → unique number','#c86e8a');
+
+  // Columnar
+  const cg=buildColGrid(m.codes,m.kw,m.finalCodes);
+  document.getElementById('colD').innerHTML=
+    makeStep('Before columnar',m.codes.join(' - '),'','#c86e8a')+
+    cg+
+    makeStep('Final codes',m.finalCodes.join(' - '),'Columns read in alphabetical key order','#6ec88a');
+
+  drawCanvas(m);
+}
+
+function makeStep(label,val,desc,col){
+  return`<div class="step"><div class="dot" style="background:${col}"></div><div><strong style="color:${col}">${label}</strong><span>${val}</span>${desc?`<div class="desc">${desc}</div>`:''}</div></div>`;
+}
+
+function buildColGrid(tokens,kw,final){
+  const cols=kw.length;
+  const pad=[...tokens];while(pad.length%cols!==0)pad.push(0);
+  const rows=[];for(let i=0;i<pad.length;i+=cols)rows.push(pad.slice(i,i+cols));
+  let h=`<div style="overflow-x:auto;margin:12px 0"><table style="border-collapse:collapse;font-size:0.72rem;margin:0 auto"><tr>`;
+  for(let c=0;c<cols;c++)h+=`<th style="padding:5px 10px;color:var(--accent);border-bottom:1px solid var(--border)">${kw[c]}</th>`;
+  h+=`</tr>`;
+  for(const row of rows){h+=`<tr>`;for(const cell of row)h+=`<td style="padding:5px 10px;text-align:center;border:1px solid var(--border);color:${cell&&cell!==PAD_CODE?'var(--accent2)':'var(--muted)'}">${cell&&cell!==PAD_CODE?cell:'pad'}</td>`;h+=`</tr>`;}
+  h+=`</table></div>`;return h;
+}
+
+function drawCanvas(m){
+  const cv=document.getElementById('vc');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
+  const nr=m.rings.length;
+  const maxR=Math.min(cx,cy)-24,minR=32,step=(maxR-minR)/nr;
+
+  m.rings.forEach((ring,r)=>{
+    const outerR=minR+(r+1)*step,innerR=r===0?0:minR+r*step;
+    const col=RCOLS[r%RCOLS.length];
+    const midR=(outerR+innerR)/2+(innerR===0?outerR*0.25:0);
+
+    ctx.beginPath();ctx.arc(cx,cy,outerR,0,Math.PI*2);
+    if(innerR>0){ctx.arc(cx,cy,innerR,0,Math.PI*2,true);}
+    ctx.fillStyle=col+'08';ctx.fill();
+    ctx.beginPath();ctx.arc(cx,cy,outerR,0,Math.PI*2);
+    ctx.strokeStyle=col+'44';ctx.lineWidth=1;ctx.stroke();
+
+    const sz=ring.size;
+    for(let i=0;i<sz;i++){
+      const ang=(i/sz)*Math.PI*2-Math.PI/2;
+      const x1=cx+Math.cos(ang)*innerR,y1=cy+Math.sin(ang)*innerR;
+      const x2=cx+Math.cos(ang)*outerR,y2=cy+Math.sin(ang)*outerR;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+      ctx.strokeStyle=col+'20';ctx.lineWidth=0.5;ctx.stroke();
+    }
+    for(let i=0;i<sz;i++){
+      const ang=((i+0.5)/sz)*Math.PI*2-Math.PI/2;
+      const s=ring.slots[i];
+      const lx=cx+Math.cos(ang)*midR,ly=cy+Math.sin(ang)*midR;
+      const fs=Math.max(9,Math.min(13,180/sz));
+      ctx.font=`bold ${fs}px Space Mono,monospace`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=s.pad?'#555':col;
+      ctx.fillText(s.c,lx,ly);
+      if(i===ring.start){
+        ctx.beginPath();ctx.arc(lx,ly-midR*0.28,3,0,Math.PI*2);
+        ctx.fillStyle='#c86e8a';ctx.fill();
+      }
+    }
+
+    // Draw read direction arrow arc
+    const arcR=outerR-4;
+    const readCW=!ring.cw;
+    ctx.beginPath();
+    if(readCW){
+      ctx.arc(cx,cy,arcR,(-Math.PI/2)+(0.1),(-Math.PI/2)+(1.2));
+    } else {
+      ctx.arc(cx,cy,arcR,(-Math.PI/2)-(0.1),(-Math.PI/2)-(1.2),true);
+    }
+    ctx.strokeStyle=col+'88';ctx.lineWidth=1.5;
+    ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+  });
+
+  // Spiral path inward
+  ctx.beginPath();
+  let firstPoint=true;
+  for(let r=m.rings.length-1;r>=0;r--){
+    const outerR=minR+(r+1)*step,innerR=r===0?0:minR+r*step;
+    const midR=(outerR+innerR)/2+(innerR===0?outerR*0.25:0);
+    const startAng=-Math.PI/2;
+    const px=cx+Math.cos(startAng)*midR,py=cy+Math.sin(startAng)*midR;
+    if(firstPoint){ctx.moveTo(px,py);firstPoint=false;}
+    else ctx.lineTo(px,py);
+    const endAng=startAng+(m.rings[r].cw?-Math.PI*1.8:Math.PI*1.8);
+    ctx.arc(cx,cy,midR,startAng,endAng,m.rings[r].cw);
+  }
+  ctx.strokeStyle='rgba(200,169,110,0.35)';ctx.lineWidth=1.5;
+  ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+
+  ctx.font='10px Space Mono,monospace';
+  ctx.fillStyle='#6666aa';ctx.textAlign='left';
+  ctx.fillText('● = write start  ↺↻ = read direction  dashed = spiral path',10,H-10);
+}
+
+// UI helpers
+function showTab(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tc-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+function showSt(id,msg,ok){const el=document.getElementById(id);el.textContent=msg;el.className='status '+(ok?'ok':'err');}
+function cp(id){
+  const t=document.getElementById(id).querySelector('span').textContent;
+  navigator.clipboard.writeText(t).catch(()=>{});
+  const b=document.getElementById(id).querySelector('.copy-btn');
+  b.textContent='copied!';setTimeout(()=>b.textContent='copy',1500);
+}
+function useCt(){document.getElementById('ctIn').value=document.getElementById('ctText').textContent;}
+function clearAll(){
+  // Clear encrypt inputs and output
+  document.getElementById('pt').value='';
+  document.getElementById('kw').value='';
+  document.getElementById('ctText').textContent='—';
+  document.getElementById('eStatus').className='status';
+  lastMeta=null;
+
+  // Hide entire layers card and reset ALL tabs and content
+  document.getElementById('layersCard').style.display='none';
+
+  // Hide all decrypt tabs
+  ['decTab1','decTab2','decTab3','decTab4','decTab5'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.style.display='none';
+    el.classList.remove('active');
+  });
+
+  // Clear all decrypt content
+  ['decD1','decD2','decD3','decD4','decD5'].forEach(id=>{
+    document.getElementById(id).innerHTML='';
+  });
+
+  // Reset all tabs to default (rings tab active)
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  document.querySelector('.tab').classList.add('active');
+  document.getElementById('tc-rings').classList.add('active');
+
+  // Clear all encrypt layer content too
+  ['ringsD','spiralD','keysubD','pairsD','colD'].forEach(id=>{
+    document.getElementById(id).innerHTML='';
+  });
+}
+function showDecryptLayers(m){
+  // Show all 5 decrypt tabs
+  ['decTab1','decTab2','decTab3','decTab4','decTab5'].forEach(id=>{
+    document.getElementById(id).style.display='block';
+  });
+
+  // Activate first decrypt tab (Rev Columnar)
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  document.getElementById('decTab1').classList.add('active');
+  document.getElementById('tc-dec1').classList.add('active');
+
+  // ── Tab 1: Reverse Columnar ──
+  let h1=`<div class="dec-header">⑤ Reverse Layer 5 — Columnar Transposition</div>`;
+  // Show the grid reconstruction
+  const cols=m.kw.length;
+  const rc=m.finalCodes.length/cols;
+  const order=[...m.kw].map((c,i)=>[c,i]).sort((a,b)=>a[0]<b[0]?-1:1).map(x=>x[1]);
+  // Show received sequence then grid
+  h1+=makeStep('Received ciphertext codes', m.finalCodes.join(' - '), `${m.finalCodes.length} codes total`,'#c86e8a');
+  // Build grid display
+  let grid=`<div style="overflow-x:auto;margin:10px 0"><table style="border-collapse:collapse;font-size:0.72rem;margin:0 auto">`;
+  grid+=`<tr><td style="padding:4px 8px;color:var(--muted);font-size:0.6rem">Read order:</td>`;
+  for(let c=0;c<cols;c++) grid+=`<th style="padding:5px 10px;color:var(--accent);border-bottom:1px solid var(--border)">${m.kw[c]}</th>`;
+  grid+=`</tr>`;
+  const cols_data={};let idx2=0;
+  for(const col of order){cols_data[col]=m.finalCodes.slice(idx2,idx2+rc);idx2+=rc;}
+  for(let r=0;r<rc;r++){
+    grid+=`<tr>`;
+    if(r===0) grid+=`<td rowspan="${rc}" style="padding:4px 8px;color:var(--muted);font-size:0.6rem;vertical-align:middle">Reconstruct<br>rows</td>`;
+    for(let c=0;c<cols;c++){
+      const val=cols_data[c][r];
+      const isPad=val===PAD_CODE;
+      grid+=`<td style="padding:5px 10px;text-align:center;border:1px solid var(--border);color:${isPad?'var(--muted)':'var(--accent2)'}">${isPad?'pad':val}</td>`;
+    }
+    grid+=`</tr>`;
+  }
+  grid+=`</table></div>`;
+  h1+=grid;
+  h1+=makeStep('After removing padding (676)', m.cleanCodes.join(' - '), 'Padding codes stripped','#6ec88a');
+  document.getElementById('decD1').innerHTML=h1;
+
+  // ── Tab 2: Reverse Pair Formula ──
+  let h2=`<div class="dec-header">④ Reverse Layer 4 — Pair Formula Decode</div>`;
+  h2+=makeStep('Input codes', m.cleanCodes.join(' - '), 'Each number decoded using: pos1 = code ÷ 26, pos2 = code mod 26', '#c86e8a');
+  let pairGrid=`<div class="pair-grid">`;
+  m.cleanCodes.forEach(c=>{
+    if(c===PAD_CODE) return;
+    const a=Math.floor(c/26), b=c%26;
+    const pair=String.fromCharCode(a+65)+String.fromCharCode(b+65);
+    pairGrid+=`<div class="pc">
+      <div class="pair">${c}</div>
+      <div class="arrow">${a}×26+${b}</div>
+      <div class="code">${pair}</div>
+    </div>`;
+  });
+  pairGrid+=`</div>`;
+  h2+=`<div style="margin:10px 0"><div class="out-label">Code → Letter pair (÷26 then mod 26)</div>${pairGrid}</div>`;
+  h2+=makeStep('Decoded text', m.afterKS, 'All pairs joined together', '#6ec88a');
+  document.getElementById('decD2').innerHTML=h2;
+
+  // ── Tab 3: Reverse Key Sub ──
+  let h3=`<div class="dec-header">③ Reverse Layer 3 — Key Substitution</div>`;
+  h3+=makeStep('Before reverse key sub', m.afterKS, '', '#c86e8a');
+  // Show letter by letter shift
+  let shiftRows=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">`;
+  [...m.afterKS].forEach((c,i)=>{
+    const shift=m.kv[i%m.kv.length];
+    const orig=String.fromCharCode(((c.charCodeAt(0)-65-shift+260)%26)+65);
+    shiftRows+=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;text-align:center;font-size:0.72rem">
+      <div style="color:var(--accent)">${c}</div>
+      <div style="color:var(--muted);font-size:0.58rem">-${shift}</div>
+      <div style="color:var(--accent2)">${orig}</div>
+    </div>`;
+  });
+  shiftRows+=`</div>`;
+  h3+=`<div style="margin:10px 0"><div class="out-label">Each letter shifted back by key [${m.kv.join(', ')}] cycling</div>${shiftRows}</div>`;
+  h3+=makeStep('After reverse key sub', m.afterSpiral, 'This is the spiral-read text', '#6eb5c8');
+  document.getElementById('decD3').innerHTML=h3;
+
+  // ── Tab 4: Reverse Spiral ──
+  let h4=`<div class="dec-header">② Reverse Layer 4 — Rebuild Ring Slots from Spiral</div>`;
+  h4+=makeStep('Spiral text to distribute', m.afterSpiral, 'Outermost ring got first chunk, innermost got last chunk', '#6eb5c8');
+  let ringSlots='';
+  m.rings.forEach((ring,r)=>{
+    const col=RCOLS[r%RCOLS.length];
+    const rd=m.ringData[r].join('');
+    const wd=ring.cw?'written CW ↻':'written CCW ↺';
+    const readDir=ring.cw?'rebuilt via CCW read':'rebuilt via CW read';
+    ringSlots+=`<div class="ring-row">
+      <div class="rl" style="color:${col}">Ring ${r+1}</div>`;
+    m.ringData[r].forEach((letter,i)=>{
+      const isStart=i===ring.start;
+      const isPad=letter===ring.fill;
+      ringSlots+=`<div class="slot ${isPad?'sp':'sl'} ${isStart?'ss':''}" style="${!isPad?`border-color:${col};color:${col};background:${col}18`:''}"> ${letter}</div>`;
+    });
+    ringSlots+=`<span class="dir-b">${wd}</span><span class="dir-b" style="color:${col}">${readDir}</span></div>`;
+  });
+  h4+=`<div style="margin:10px 0">${ringSlots}</div>`;
+  document.getElementById('decD4').innerHTML=h4;
+
+  // ── Tab 5: Reverse Rings ──
+  let h5=`<div class="dec-header">① Reverse Layer 1 — Extract Letters from Ring Slots</div>`;
+  let extractRows='';
+  m.rings.forEach((ring,r)=>{
+    const col=RCOLS[r%RCOLS.length];
+    const letters=[];
+    for(let i=0;i<ring.size;i++){
+      const slot=ring.cw?(ring.start+i)%ring.size:((ring.start-i)%ring.size+ring.size)%ring.size;
+      const letter=m.ringData[r][slot];
+      if(letter!==ring.fill&&letter!=='?') letters.push(letter);
+    }
+    extractRows+=`<div style="margin-bottom:8px;font-size:0.78rem">
+      <span style="color:${col}">Ring ${r+1}</span>
+      <span style="color:var(--muted)"> — walk from start Part ${ring.start+1}, skip padding '${ring.fill}':</span>
+      <span style="color:${col};font-weight:700"> ${letters.join(' ')}</span>
+    </div>`;
+  });
+  h5+=`<div style="margin:10px 0">${extractRows}</div>`;
+  h5+=makeStep('Final Plaintext', m.plaintext,
+    `${m.origLen} letters recovered — trailing padding removed`,'#6ec88a');
+  document.getElementById('decD5').innerHTML=h5;
+}
+
+window.onload=()=>{ document.getElementById("pt").value=""; document.getElementById("kw").value=""; };
+</script>
+</body>
+</html>
